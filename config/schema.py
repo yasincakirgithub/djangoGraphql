@@ -1,7 +1,17 @@
 import graphene
-from graphene_django import DjangoObjectType  # used to change Django object into a format that is readable by GraphQL
+from graphene_django import DjangoObjectType
 from game.models import Game
 from developer.models import Developer
+
+from graphql_auth.schema import UserQuery
+from graphql_auth import mutations
+from graphql_jwt.decorators import login_required
+
+
+class AuthMutation(graphene.ObjectType):
+    register = mutations.Register.Field()
+    verify_account = mutations.VerifyAccount.Field()
+    token_auth = mutations.ObtainJSONWebToken.Field()
 
 
 class DeveloperType(DjangoObjectType):
@@ -12,7 +22,7 @@ class DeveloperType(DjangoObjectType):
 
 
 # List
-class Query(graphene.ObjectType):
+class Query(UserQuery,graphene.ObjectType):
     list_developer = graphene.List(DeveloperType)
     read_developer = graphene.Field(DeveloperType, id=graphene.Int())
 
@@ -35,6 +45,7 @@ class DeveloperCreateMutation(graphene.Mutation):
     developer = graphene.Field(DeveloperType)  # define the class we are getting the fields from
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, username, full_name, age):
         developer = Developer(username=username, full_name=full_name, age=age)  # accepts all fields
         developer.save()
@@ -52,6 +63,7 @@ class DeveloperUpdateMutation(graphene.Mutation):
     developer = graphene.Field(DeveloperType)
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, username, full_name, age, id):
         developer = Developer.objects.get(id=id)
         developer.username = username
@@ -65,16 +77,18 @@ class DeveloperUpdateMutation(graphene.Mutation):
 class DeveloperDeleteMutation(graphene.Mutation):
     class Arguments:
         id = graphene.ID()
+
     ok = graphene.Boolean()
 
     @classmethod
+    @login_required
     def mutate(cls, root, info, id):
         developer = Developer.objects.get(id=id)
         developer.delete()
         return DeveloperDeleteMutation(ok=True)
 
 
-class Mutation(graphene.ObjectType):
+class Mutation(AuthMutation, graphene.ObjectType):
     create_developer = DeveloperCreateMutation.Field()
     update_developer = DeveloperUpdateMutation.Field()
     delete_developer = DeveloperDeleteMutation.Field()
