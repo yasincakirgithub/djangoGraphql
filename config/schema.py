@@ -11,8 +11,7 @@ class DeveloperType(DjangoObjectType):
         fields = ("id", "username", "full_name", "age")
 
 
-# Retrieveal işlemler
-
+#List
 class Query(graphene.ObjectType):
     list_developer = graphene.List(DeveloperType)
     read_developer = graphene.Field(DeveloperType, id=graphene.Int())
@@ -25,9 +24,8 @@ class Query(graphene.ObjectType):
         # get data where id in the database = id queried from the frontend
         return Developer.objects.get(id=id)
 
-
-# Create işlemleri
-class DeveloperMutation(graphene.Mutation):
+# Create
+class DeveloperCreateMutation(graphene.Mutation):
     class Arguments:
         username = graphene.String()
         full_name = graphene.String()
@@ -37,15 +35,33 @@ class DeveloperMutation(graphene.Mutation):
 
     @classmethod
     def mutate(cls, root, info, username, full_name, age):
-        # function that will save the data
         developer = Developer(username=username, full_name=full_name, age=age)  # accepts all fields
         developer.save()
-        return DeveloperMutation(developer=developer)
+        return DeveloperCreateMutation(developer=developer)
+
+# Update
+class DeveloperUpdateMutation(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID()
+        username = graphene.String()
+        full_name = graphene.String()
+        age = graphene.Int()
+
+    developer = graphene.Field(DeveloperType)
+
+    @classmethod
+    def mutate(cls, root, info, username, full_name, age, id):
+        developer = Developer.objects.get(id=id)
+        developer.username = username
+        developer.full_name = full_name
+        developer.age = age
+        developer.save()
+        return DeveloperUpdateMutation(developer=developer)
 
 
 class Mutation(graphene.ObjectType):
-    # keywords that will be used to do the mutation in the frontend
-    create_developer = DeveloperMutation.Field()
+    create_developer = DeveloperCreateMutation.Field()
+    update_developer = DeveloperUpdateMutation.Field()
 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)
